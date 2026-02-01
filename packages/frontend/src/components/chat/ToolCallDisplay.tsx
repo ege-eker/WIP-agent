@@ -1,0 +1,73 @@
+import { Search, FolderOpen, FileText, Info, Filter, CheckCircle, Loader2 } from 'lucide-react';
+import { ToolCallDisplay as ToolCallType } from '../../types/chat.types';
+import { useState } from 'react';
+
+const TOOL_ICONS: Record<string, typeof Search> = {
+  search_documents: Search,
+  list_categories: FolderOpen,
+  filter_documents: Filter,
+  read_document_chunk: FileText,
+  get_document_info: Info,
+};
+
+const TOOL_LABELS: Record<string, string> = {
+  search_documents: 'Searching documents',
+  list_categories: 'Listing categories',
+  filter_documents: 'Filtering documents',
+  read_document_chunk: 'Reading document',
+  get_document_info: 'Getting document info',
+};
+
+export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = TOOL_ICONS[toolCall.name] || Search;
+  const label = TOOL_LABELS[toolCall.name] || toolCall.name;
+  const isRunning = toolCall.status === 'running';
+
+  let parsedArgs: string;
+  try {
+    parsedArgs = JSON.stringify(JSON.parse(toolCall.arguments), null, 2);
+  } catch {
+    parsedArgs = toolCall.arguments;
+  }
+
+  return (
+    <div className="my-2 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+      >
+        {isRunning ? (
+          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+        ) : (
+          <CheckCircle className="w-4 h-4 text-green-500" />
+        )}
+        <Icon className="w-4 h-4" />
+        <span className="font-medium">{label}</span>
+        <span className="ml-auto text-xs text-gray-400">{expanded ? 'Hide' : 'Show'} details</span>
+      </button>
+      {expanded && (
+        <div className="px-3 py-2 border-t border-gray-200 text-xs">
+          <div className="mb-2">
+            <span className="font-semibold text-gray-500">Arguments:</span>
+            <pre className="mt-1 p-2 bg-white rounded border overflow-x-auto">{parsedArgs}</pre>
+          </div>
+          {toolCall.result && (
+            <div>
+              <span className="font-semibold text-gray-500">Result:</span>
+              <pre className="mt-1 p-2 bg-white rounded border overflow-x-auto max-h-48 overflow-y-auto">
+                {(() => {
+                  try {
+                    return JSON.stringify(JSON.parse(toolCall.result), null, 2);
+                  } catch {
+                    return toolCall.result;
+                  }
+                })()}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
