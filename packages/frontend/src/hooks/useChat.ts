@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { DisplayMessage, ToolCallDisplay, SSEEvent } from '../types/chat.types';
+import { ChatMessage } from '../types/api.types';
 import { sendMessage } from '../services/chat.service';
 import { useSSE } from './useSSE';
 
@@ -9,6 +10,19 @@ export function useChat() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { processStream } = useSSE();
+
+  const loadMessages = useCallback((chatMessages: ChatMessage[]) => {
+    const displayMessages: DisplayMessage[] = chatMessages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({
+        id: `msg-${++messageIdCounter}`,
+        role: m.role as 'user' | 'assistant',
+        content: m.content || '',
+        toolCalls: [],
+        isStreaming: false,
+      }));
+    setMessages(displayMessages);
+  }, []);
 
   const send = useCallback(
     async (sessionId: string, text: string) => {
@@ -97,5 +111,5 @@ export function useChat() {
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
-  return { messages, isLoading, send, clearMessages };
+  return { messages, isLoading, send, clearMessages, loadMessages };
 }
