@@ -3,7 +3,7 @@ export interface DocumentMetadata {
   path: string;
   year?: string;
   category?: string;
-  fileType: 'pdf' | 'docx' | 'txt';
+  fileType: 'pdf' | 'docx' | 'txt' | 'doc' | 'xls' | 'xlsx';
   sizeBytes: number;
   chunkCount: number;
   indexedAt: string;
@@ -31,6 +31,9 @@ export interface DocumentInfo {
 export interface ParsedDocument {
   content: string;
   metadata: Partial<DocumentMetadata>;
+  ocrApplied?: boolean;
+  ocrConfidence?: number;
+  ocrPageCount?: number;
 }
 
-export type SupportedFileType = 'pdf' | 'docx' | 'txt';
+export type SupportedFileType = 'pdf' | 'docx' | 'txt' | 'doc' | 'xls' | 'xlsx';
