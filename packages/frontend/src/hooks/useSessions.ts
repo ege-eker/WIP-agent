@@ -31,5 +31,11 @@ export function useSessions() {
     return getSession(id);
   }, []);
 
-  return { sessions, activeSessionId, create, select, refresh };
+  const updateTitle = useCallback((id: string, title: string) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, title } : s))
+    );
+  }, []);
+
+  return { sessions, activeSessionId, create, select, refresh, updateTitle };
 }

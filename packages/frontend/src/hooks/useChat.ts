@@ -71,11 +71,20 @@ export function useChat() {
                 last.toolCalls = [...last.toolCalls, newTc];
                 break;
               }
+              case 'tool_call_progress': {
+                const progress = event.data as { id: string; name: string; message: string; details?: Record<string, any> };
+                last.toolCalls = last.toolCalls.map((tc) =>
+                  tc.id === progress.id
+                    ? { ...tc, progressMessage: progress.message, progressDetails: progress.details }
+                    : tc
+                );
+                break;
+              }
               case 'tool_call_result': {
                 const result = event.data as { id: string; name: string; result: string };
                 last.toolCalls = last.toolCalls.map((tc) =>
                   tc.id === result.id
-                    ? { ...tc, result: result.result, status: 'completed' as const }
+                    ? { ...tc, result: result.result, status: 'completed' as const, progressMessage: undefined }
                     : tc
                 );
                 break;

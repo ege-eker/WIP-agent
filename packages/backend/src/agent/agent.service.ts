@@ -7,6 +7,7 @@ import { ContextManagerService } from './context-manager.service';
 import { ToolExecutorService } from './tool-executor.service';
 import { TOOL_DEFINITIONS } from './tool-definitions';
 import { ContextOverflowError, MaxToolCallsError } from '../core/errors/ai.errors';
+import { ProgressChannel } from '../utils/progress-channel';
 
 const SYSTEM_PROMPT = `You are an intelligent document search assistant. You have access to a collection of documents (PDF, DOCX, TXT files) that you can search through using the provided tools.
 
@@ -146,11 +147,35 @@ export class AgentService implements IAgent {
         // Execute each tool call
         for (const tc of pendingToolCalls) {
           toolCallCount++;
-          const result = await this.toolExecutor.execute({
-            id: tc.id,
-            name: tc.name,
-            arguments: tc.arguments,
+
+          const progressChannel = new ProgressChannel();
+
+          // Start tool execution (don't await yet)
+          const executionPromise = this.toolExecutor.execute(
+            {
+              id: tc.id,
+              name: tc.name,
+              arguments: tc.arguments,
+            },
+            (message, details) => {
+              progressChannel.push({ message, details });
+            }
+          ).finally(() => {
+            progressChannel.close();
           });
+
+          // Consume progress events while tool is executing
+          let progressEvent = await progressChannel.next();
+          while (progressEvent !== null) {
+            yield {
+              type: 'tool_call_progress',
+              data: { id: tc.id, name: tc.name, message: progressEvent.message, details: progressEvent.details },
+            };
+            progressEvent = await progressChannel.next();
+          }
+
+          // Wait for tool to complete and get result
+          const result = await executionPromise;
 
           yield {
             type: 'tool_call_result',

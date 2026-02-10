@@ -1,4 +1,4 @@
-import { Search, FolderOpen, FileText, Info, Filter, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, FolderOpen, FileText, Info, Filter, CheckCircle, Loader2, Eye } from 'lucide-react';
 import { ToolCallDisplay as ToolCallType } from '../../types/chat.types';
 import { useState } from 'react';
 
@@ -8,6 +8,9 @@ const TOOL_ICONS: Record<string, typeof Search> = {
   filter_documents: Filter,
   read_document_chunk: FileText,
   get_document_info: Info,
+  browse_directory: FolderOpen,
+  read_file_content: Eye,
+  get_file_info: Info,
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -16,6 +19,9 @@ const TOOL_LABELS: Record<string, string> = {
   filter_documents: 'Filtering documents',
   read_document_chunk: 'Reading document',
   get_document_info: 'Getting document info',
+  browse_directory: 'Browsing directory',
+  read_file_content: 'Reading file',
+  get_file_info: 'Getting file info',
 };
 
 export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
@@ -43,7 +49,12 @@ export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
           <CheckCircle className="w-4 h-4 text-green-500" />
         )}
         <Icon className="w-4 h-4" />
-        <span className="font-medium">{label}</span>
+        <div className="flex flex-col items-start">
+          <span className="font-medium">{label}</span>
+          {isRunning && toolCall.progressMessage && (
+            <span className="text-xs text-blue-600 animate-pulse">{toolCall.progressMessage}</span>
+          )}
+        </div>
         <span className="ml-auto text-xs text-gray-400">{expanded ? 'Hide' : 'Show'} details</span>
       </button>
       {expanded && (

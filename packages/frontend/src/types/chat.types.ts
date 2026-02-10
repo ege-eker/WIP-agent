@@ -1,4 +1,4 @@
-export type SSEEventType = 'text_delta' | 'tool_call_start' | 'tool_call_result' | 'handoff' | 'done' | 'error';
+export type SSEEventType = 'text_delta' | 'tool_call_start' | 'tool_call_progress' | 'tool_call_result' | 'handoff' | 'done' | 'error';
 
 export interface SSEEvent {
   type: SSEEventType;
@@ -11,6 +11,8 @@ export interface ToolCallDisplay {
   arguments: string;
   result?: string;
   status: 'running' | 'completed' | 'error';
+  progressMessage?: string;
+  progressDetails?: Record<string, any>;
 }
 
 export interface DisplayMessage {

@@ -2,7 +2,7 @@ import { IVectorStore } from '../core/interfaces/vector-store.interface';
 import { IEmbeddingProvider } from '../core/interfaces/embedding-provider.interface';
 import { IDocumentStore } from '../core/interfaces/document-store.interface';
 import { ILogger } from '../core/interfaces/logger.interface';
-import { ToolCallInfo } from '../core/types/chat.types';
+import { ToolCallInfo, ToolProgressCallback } from '../core/types/chat.types';
 import { ToolResult } from '../core/types/tool.types';
 import { searchDocuments } from './tools/search-documents.tool';
 import { listCategories } from './tools/list-categories.tool';
@@ -21,7 +21,7 @@ export class ToolExecutorService {
     private logger: ILogger
   ) {}
 
-  async execute(toolCall: ToolCallInfo): Promise<ToolResult> {
+  async execute(toolCall: ToolCallInfo, onProgress?: ToolProgressCallback): Promise<ToolResult> {
     this.logger.debug(`Executing tool: ${toolCall.name}`, { arguments: toolCall.arguments });
 
     let result: string;
@@ -48,7 +48,7 @@ export class ToolExecutorService {
           result = await browseDirectory(args, this.documentStore);
           break;
         case 'read_file_content':
-          result = await readFileContent(args, this.documentStore);
+          result = await readFileContent(args, this.documentStore, onProgress);
           break;
         case 'get_file_info':
           result = await getFileInfo(args, this.documentStore);

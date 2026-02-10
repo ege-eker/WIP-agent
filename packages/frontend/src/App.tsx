@@ -4,7 +4,7 @@ import { ChatPage } from './components/chat/ChatPage';
 import { useSessions } from './hooks/useSessions';
 
 export default function App() {
-  const { sessions, activeSessionId, create, select } = useSessions();
+  const { sessions, activeSessionId, create, select, updateTitle } = useSessions();
 
   const handleNewChat = useCallback(async () => {
     await create();
@@ -31,7 +31,11 @@ export default function App() {
         onSelectSession={handleSelectSession}
       />
       <main className="flex-1 flex flex-col bg-gray-50">
-        <ChatPage sessionId={activeSessionId} onNeedSession={handleNeedSession} />
+        <ChatPage
+          sessionId={activeSessionId}
+          onNeedSession={handleNeedSession}
+          onUpdateTitle={updateTitle}
+        />
       </main>
     </div>
   );

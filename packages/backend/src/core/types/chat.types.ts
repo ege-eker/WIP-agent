@@ -25,9 +25,11 @@ export interface ChatRequest {
   message: string;
 }
 
-export type SSEEventType = 'text_delta' | 'tool_call_start' | 'tool_call_result' | 'handoff' | 'done' | 'error';
+export type SSEEventType = 'text_delta' | 'tool_call_start' | 'tool_call_progress' | 'tool_call_result' | 'handoff' | 'done' | 'error';
 
 export interface SSEEvent {
   type: SSEEventType;
   data: unknown;
 }
+
+export type ToolProgressCallback = (message: string, details?: Record<string, any>) => void;
