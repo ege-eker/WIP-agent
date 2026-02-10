@@ -10,3 +10,4 @@ chromadb_data/
 ingestion-state.json
 .claude/
 documents/
+*.traineddata

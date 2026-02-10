@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import * as XLSX from 'xlsx';
 
 const BASE = path.resolve(__dirname, '../documents');
 
@@ -9,6 +10,8 @@ const BASE = path.resolve(__dirname, '../documents');
 interface SeedDoc {
   name: string;
   content: string;
+  /** For .xlsx/.xls files: array of sheets with name and rows */
+  sheets?: { name: string; data: (string | number)[][] }[];
 }
 interface SeedCategory {
   dir: string;
@@ -63,6 +66,79 @@ async function createDocx(filePath: string, title: string, content: string): Pro
 
   const buffer = await Packer.toBuffer(doc);
   fs.writeFileSync(filePath, buffer);
+}
+
+function createXlsx(filePath: string, sheets: { name: string; data: (string | number)[][] }[]): void {
+  const workbook = XLSX.utils.book_new();
+  for (const sheet of sheets) {
+    const worksheet = XLSX.utils.aoa_to_sheet(sheet.data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+  }
+  XLSX.writeFile(workbook, filePath);
+}
+
+function generateLargeProductCatalog(rowCount: number): (string | number)[][] {
+  const categories = ['Elektronik', 'Giyim', 'Gıda', 'Mobilya', 'Otomotiv', 'Kozmetik', 'Kitap', 'Spor', 'Oyuncak', 'Bahçe'];
+  const adjectives = ['Premium', 'Ekonomik', 'Profesyonel', 'Standart', 'Lüks', 'Organik', 'Dijital', 'Klasik', 'Modern', 'Endüstriyel'];
+  const items = ['Widget', 'Aksesuar', 'Modül', 'Sistem', 'Ürün', 'Parça', 'Set', 'Paket', 'Araç', 'Cihaz'];
+  const brands = ['AcmeTech', 'TürkStar', 'İnovasyon', 'MegaPro', 'ŞirinMarka', 'GüçlüTek', 'YeşilÜrün', 'AltınKalite', 'ÖzgürTasarım', 'BüyükDepo'];
+
+  const rows: (string | number)[][] = [
+    ['ÜRÜN KODU', 'ÜRÜN ADI', 'KATEGORİ', 'MARKA', 'FİYAT (TL)', 'STOK', 'AÇIKLAMA'],
+  ];
+
+  for (let i = 1; i <= rowCount; i++) {
+    const cat = categories[i % categories.length];
+    const adj = adjectives[i % adjectives.length];
+    const item = items[Math.floor(i / 10) % items.length];
+    const brand = brands[Math.floor(i / 100) % brands.length];
+    const price = Math.round((10 + Math.sin(i) * 500 + i * 0.5) * 100) / 100;
+    const stock = Math.abs(Math.floor(Math.sin(i * 7) * 1000));
+
+    rows.push([
+      `PRD-${String(i).padStart(6, '0')}`,
+      `${adj} ${item} ${cat} ${i}`,
+      cat,
+      brand,
+      price,
+      stock,
+      `${brand} marka ${adj.toLowerCase()} ${item.toLowerCase()} - ${cat} kategorisinde yüksek kaliteli ürün. Detaylı teknik özellikler ve garanti bilgisi için ürün sayfasını ziyaret ediniz.`,
+    ]);
+  }
+
+  return rows;
+}
+
+function generateTransactionLog(rowCount: number): (string | number)[][] {
+  const statuses = ['Tamamlandı', 'İptal Edildi', 'Beklemede', 'İade', 'Kargoda'];
+  const cities = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Gaziantep', 'Konya', 'Mersin', 'Diyarbakır',
+    'Kayseri', 'Eskişehir', 'Samsun', 'Denizli', 'Şanlıurfa', 'Trabzon', 'Malatya', 'Erzurum', 'Çanakkale', 'Muğla'];
+
+  const rows: (string | number)[][] = [
+    ['İŞLEM NO', 'TARİH', 'MÜŞTERİ ADI', 'ŞEHİR', 'ÜRÜN KODU', 'ADET', 'TUTAR (TL)', 'DURUM'],
+  ];
+
+  for (let i = 1; i <= rowCount; i++) {
+    const month = ((i % 12) + 1).toString().padStart(2, '0');
+    const day = ((i % 28) + 1).toString().padStart(2, '0');
+    const city = cities[i % cities.length];
+    const status = statuses[i % statuses.length];
+    const qty = (i % 10) + 1;
+    const amount = Math.round((qty * (50 + Math.sin(i) * 200)) * 100) / 100;
+
+    rows.push([
+      `TXN-2025-${String(i).padStart(7, '0')}`,
+      `2025-${month}-${day}`,
+      `Müşteri ${i}`,
+      city,
+      `PRD-${String((i * 3) % 10000).padStart(6, '0')}`,
+      qty,
+      Math.abs(amount),
+      status,
+    ]);
+  }
+
+  return rows;
 }
 
 // ── Document Data ──────────────────────────────────────────────────
@@ -165,6 +241,32 @@ const docs: SeedCategory[] = [
       { name: 'annual-budget-2025.pdf', content: 'Annual Budget 2025\n\nTotal Budget: $28.5M\n\nDepartment Allocations:\n- Engineering: $12.2M (43%)\n- Sales & Marketing: $8.1M (28%)\n- G&A: $4.8M (17%)\n- Product: $2.1M (7%)\n- Operations: $1.3M (5%)\n\nCapital Expenditures: $2.1M\n- Office expansion: $1.2M\n- Hardware refresh: $600K\n- Security infrastructure: $300K\n\nKey Assumptions:\n- Revenue: $42M (31% growth)\n- Headcount: 560 (from 475)\n- Gross margin: 75%' },
       { name: 'investor-relations-q1-2025.txt', content: 'Investor Relations Update Q1 2025\n\nBoard Meeting Summary - March 28, 2025\n\nFinancial Highlights:\n- Q1 Revenue: $10.2M (14% above plan)\n- ARR: $41M (crossing $40M milestone)\n- Gross Margin: 76% (up from 72%)\n- Net Revenue Retention: 125%\n\nOperational Metrics:\n- Customer Count: 520 (up from 425)\n- Enterprise Customers: 45 (up from 28)\n- Average ACV: $78,800\n\nFundraising:\n- Series C discussions initiated\n- Target: $50M at $400M+ valuation\n- Expected close: Q3 2025' },
       { name: 'procurement-policy-2025.docx', content: 'Procurement Policy 2025\n\nNew Requirements:\n1. All software purchases must go through IT security review\n2. Minimum 3 vendor quotes for purchases >$25,000\n3. Annual vendor risk assessments for critical suppliers\n4. Sustainability criteria added to vendor evaluation\n\nPreferred Vendor Program:\n- AWS (cloud infrastructure)\n- Salesforce (CRM)\n- Workday (HR/Finance)\n- Slack (communication)\n- GitHub (development)\n\nContract Management:\n- All contracts stored in DocuSign CLM\n- Auto-renewal alerts 90 days before expiry\n- Annual spend review for all vendors >$50K' },
+    ],
+  },
+
+  // ─── Test: Large Excel ────────────────────────────────────────
+  {
+    dir: 'Finance/2025',
+    files: [
+      {
+        name: 'urun-katalogu-2025.xlsx',
+        content: '',
+        sheets: [
+          { name: 'Ürün Kataloğu', data: generateLargeProductCatalog(10000) },
+          { name: 'İşlem Geçmişi', data: generateTransactionLog(5000) },
+          {
+            name: 'Özet',
+            data: [
+              ['RAPOR ÖZETİ'],
+              ['Toplam Ürün Sayısı', 10000],
+              ['Toplam İşlem Sayısı', 5000],
+              ['Rapor Tarihi', '2025-02-10'],
+              ['Hazırlayan', 'Sistem Otomatik'],
+              ['Açıklama', 'Bu dosya büyük veri seti testi için otomatik oluşturulmuştur. Türkçe karakter desteği: İışğüöçŞĞÜÖÇ'],
+            ],
+          },
+        ],
+      },
     ],
   },
 
@@ -325,7 +427,11 @@ async function seed() {
       const ext = path.extname(file.name).toLowerCase();
       const title = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
 
-      if (ext === '.pdf') {
+      if (ext === '.xlsx' || ext === '.xls') {
+        if (file.sheets) {
+          createXlsx(filePath, file.sheets);
+        }
+      } else if (ext === '.pdf') {
         await createPdf(filePath, title, file.content);
       } else if (ext === '.docx') {
         await createDocx(filePath, title, file.content);
