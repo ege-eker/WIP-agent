@@ -5,7 +5,9 @@ export async function getDocumentInfo(
   input: GetDocumentInfoInput,
   vectorStore: IVectorStore
 ): Promise<string> {
-  const metadata = await vectorStore.getDocumentMetadata(input.document_path);
+  // Normalize Unicode to handle Turkish characters
+  const documentPath = input.document_path.normalize('NFC');
+  const metadata = await vectorStore.getDocumentMetadata(documentPath);
 
   if (!metadata) {
     return JSON.stringify({

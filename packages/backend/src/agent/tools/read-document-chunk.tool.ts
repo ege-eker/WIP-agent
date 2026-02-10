@@ -13,7 +13,9 @@ export async function readDocumentChunk(
     chunkIndex = Math.max(0, chunkIndex - 1);
   }
 
-  const chunk = await vectorStore.getDocumentChunk(input.document_path, chunkIndex);
+  // Normalize Unicode to handle Turkish characters
+  const documentPath = input.document_path.normalize('NFC');
+  const chunk = await vectorStore.getDocumentChunk(documentPath, chunkIndex);
 
   if (!chunk) {
     return JSON.stringify({

@@ -34,7 +34,49 @@ export class LocalFilesystemStore implements IDocumentStore {
   }
 
   async readFile(filePath: string): Promise<Buffer> {
-    return fs.readFile(filePath);
+    // Try reading with the original path first
+    try {
+      return await fs.readFile(filePath);
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') throw err;
+
+      // If file not found, try with alternate Unicode normalization
+      const resolvedPath = await this.resolveUnicodePath(filePath);
+      if (resolvedPath) {
+        return fs.readFile(resolvedPath);
+      }
+      throw err;
+    }
+  }
+
+  private async resolveUnicodePath(filePath: string): Promise<string | null> {
+    const dir = path.dirname(filePath);
+    const filename = path.basename(filePath);
+
+    try {
+      const entries = await fs.readdir(dir);
+      // Try to find a file that matches when normalized
+      const nfcFilename = filename.normalize('NFC');
+      const nfdFilename = filename.normalize('NFD');
+
+      for (const entry of entries) {
+        const entryNfc = entry.normalize('NFC');
+        const entryNfd = entry.normalize('NFD');
+
+        if (
+          entryNfc === nfcFilename ||
+          entryNfd === nfdFilename ||
+          entryNfc === nfdFilename ||
+          entryNfd === nfcFilename
+        ) {
+          return path.join(dir, entry);
+        }
+      }
+    } catch {
+      // Directory doesn't exist or not accessible
+    }
+
+    return null;
   }
 
   async exists(filePath: string): Promise<boolean> {
@@ -51,7 +93,18 @@ export class LocalFilesystemStore implements IDocumentStore {
   }
 
   async listDirectory(relativePath: string): Promise<DirectoryEntry[]> {
-    const fullPath = sanitizePath(relativePath, this.basePath);
+    let fullPath = sanitizePath(relativePath, this.basePath);
+
+    // Try with Unicode normalization fallback
+    try {
+      await fs.access(fullPath);
+    } catch {
+      const resolved = await this.resolveUnicodePath(fullPath);
+      if (resolved) {
+        fullPath = resolved;
+      }
+    }
+
     const entries = await fs.readdir(fullPath, { withFileTypes: true });
     const results: DirectoryEntry[] = [];
 
@@ -73,7 +126,8 @@ export class LocalFilesystemStore implements IDocumentStore {
   }
 
   async getFileStats(relativePath: string): Promise<FileInfo | null> {
-    const fullPath = sanitizePath(relativePath, this.basePath);
+    let fullPath = sanitizePath(relativePath, this.basePath);
+
     try {
       const stat = await fs.stat(fullPath);
       if (!stat.isFile()) {
@@ -86,6 +140,24 @@ export class LocalFilesystemStore implements IDocumentStore {
         modifiedAt: stat.mtime,
       };
     } catch {
+      // Try with Unicode normalization fallback
+      const resolved = await this.resolveUnicodePath(fullPath);
+      if (resolved) {
+        try {
+          const stat = await fs.stat(resolved);
+          if (!stat.isFile()) {
+            return null;
+          }
+          return {
+            path: resolved,
+            filename: path.basename(resolved),
+            sizeBytes: stat.size,
+            modifiedAt: stat.mtime,
+          };
+        } catch {
+          return null;
+        }
+      }
       return null;
     }
   }

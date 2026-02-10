@@ -90,60 +90,76 @@ export class ChromaDBStore implements IVectorStore {
   }
 
   async getDocumentChunk(documentPath: string, chunkIndex: number): Promise<DocumentChunk | null> {
-    const results = await this.collection.get({
-      where: {
-        $and: [
-          { documentPath: { $eq: documentPath } },
-          { chunkIndex: { $eq: chunkIndex } },
-        ],
-      } as any,
-      limit: 1,
-    });
+    // Try both NFC and NFD normalizations to handle Turkish characters
+    const pathsToTry = [documentPath, documentPath.normalize('NFC'), documentPath.normalize('NFD')];
+    const uniquePaths = [...new Set(pathsToTry)];
 
-    if (!results.ids.length) return null;
+    for (const path of uniquePaths) {
+      const results = await this.collection.get({
+        where: {
+          $and: [
+            { documentPath: { $eq: path } },
+            { chunkIndex: { $eq: chunkIndex } },
+          ],
+        } as any,
+        limit: 1,
+      });
 
-    const meta = results.metadatas?.[0] as any;
-    return {
-      id: results.ids[0],
-      documentPath,
-      chunkIndex,
-      content: results.documents?.[0] || '',
-      metadata: {
-        filename: meta?.filename || '',
-        path: documentPath,
-        year: meta?.year,
-        category: meta?.category,
-        fileType: meta?.fileType || 'txt',
-        sizeBytes: meta?.sizeBytes || 0,
-        chunkCount: meta?.chunkCount || 0,
-        indexedAt: '',
-      },
-    };
+      if (results.ids.length) {
+        const meta = results.metadatas?.[0] as any;
+        return {
+          id: results.ids[0],
+          documentPath: path,
+          chunkIndex,
+          content: results.documents?.[0] || '',
+          metadata: {
+            filename: meta?.filename || '',
+            path: path,
+            year: meta?.year,
+            category: meta?.category,
+            fileType: meta?.fileType || 'txt',
+            sizeBytes: meta?.sizeBytes || 0,
+            chunkCount: meta?.chunkCount || 0,
+            indexedAt: '',
+          },
+        };
+      }
+    }
+
+    return null;
   }
 
   async getDocumentMetadata(documentPath: string): Promise<DocumentMetadata | null> {
-    const results = await this.collection.get({
-      where: { documentPath: { $eq: documentPath } } as any,
-      limit: 1,
-    });
+    // Try both NFC and NFD normalizations to handle Turkish characters
+    const pathsToTry = [documentPath, documentPath.normalize('NFC'), documentPath.normalize('NFD')];
+    const uniquePaths = [...new Set(pathsToTry)];
 
-    if (!results.ids.length) return null;
+    for (const path of uniquePaths) {
+      const results = await this.collection.get({
+        where: { documentPath: { $eq: path } } as any,
+        limit: 1,
+      });
 
-    const meta = results.metadatas?.[0] as any;
-    const allChunks = await this.collection.get({
-      where: { documentPath: { $eq: documentPath } } as any,
-    });
+      if (results.ids.length) {
+        const meta = results.metadatas?.[0] as any;
+        const allChunks = await this.collection.get({
+          where: { documentPath: { $eq: path } } as any,
+        });
 
-    return {
-      filename: meta?.filename || '',
-      path: documentPath,
-      year: meta?.year,
-      category: meta?.category,
-      fileType: meta?.fileType || 'txt',
-      sizeBytes: meta?.sizeBytes || 0,
-      chunkCount: allChunks.ids.length,
-      indexedAt: '',
-    };
+        return {
+          filename: meta?.filename || '',
+          path: path,
+          year: meta?.year,
+          category: meta?.category,
+          fileType: meta?.fileType || 'txt',
+          sizeBytes: meta?.sizeBytes || 0,
+          chunkCount: allChunks.ids.length,
+          indexedAt: '',
+        };
+      }
+    }
+
+    return null;
   }
 
   async listCategories(groupBy: 'category' | 'year' | 'both'): Promise<CategoryGroup[]> {

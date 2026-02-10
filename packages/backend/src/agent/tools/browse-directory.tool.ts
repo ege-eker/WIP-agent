@@ -5,7 +5,8 @@ export async function browseDirectory(
   input: BrowseDirectoryInput,
   documentStore: IDocumentStore
 ): Promise<string> {
-  const relativePath = input.path || '';
+  // Normalize Unicode to handle Turkish characters
+  const relativePath = (input.path || '').normalize('NFC');
 
   try {
     const entries = await documentStore.listDirectory(relativePath);

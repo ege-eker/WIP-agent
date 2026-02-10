@@ -1,7 +1,7 @@
 import { IDocumentStore, FileInfo } from '../core/interfaces/document-store.interface';
 import { SupportedFileType } from '../core/types/document.types';
 
-const SUPPORTED_EXTENSIONS: SupportedFileType[] = ['pdf', 'docx', 'txt'];
+const SUPPORTED_EXTENSIONS: SupportedFileType[] = ['pdf', 'docx', 'txt', 'doc', 'xls', 'xlsx'];
 
 export class FileDiscoveryService {
   constructor(private documentStore: IDocumentStore) {}

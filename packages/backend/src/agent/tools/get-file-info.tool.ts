@@ -6,7 +6,9 @@ export async function getFileInfo(
   documentStore: IDocumentStore
 ): Promise<string> {
   try {
-    const stats = await documentStore.getFileStats(input.file_path);
+    // Normalize Unicode to handle Turkish characters
+    const filePath = input.file_path.normalize('NFC');
+    const stats = await documentStore.getFileStats(filePath);
 
     if (!stats) {
       return JSON.stringify({

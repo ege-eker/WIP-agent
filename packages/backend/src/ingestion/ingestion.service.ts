@@ -103,8 +103,8 @@ export class IngestionService {
             },
           }));
 
-          // Batch embed
-          const batchSize = 100;
+          // Batch embed - smaller batches to avoid token limits
+          const batchSize = 10;
           for (let i = 0; i < chunks.length; i += batchSize) {
             const batch = chunks.slice(i, i + batchSize);
             const texts = batch.map((c) => c.content);
