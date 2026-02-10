@@ -12,6 +12,11 @@ export class ChunkingService {
   chunk(text: string): TextChunk[] {
     if (!text.trim()) return [];
 
+    // For very large texts, use simple size-based chunking to avoid memory issues
+    if (text.length > 500000) {
+      return this.chunkBySize(text.trim());
+    }
+
     const paragraphs = text.split(/\n\s*\n/);
     const chunks: TextChunk[] = [];
     let currentChunk = '';
@@ -34,7 +39,16 @@ export class ChunkingService {
     }
 
     if (currentChunk.trim()) {
-      chunks.push({ content: currentChunk.trim(), chunkIndex });
+      // If final chunk exceeds size, split it further
+      if (currentChunk.length > this.chunkSize) {
+        const subChunks = this.chunkBySize(currentChunk.trim());
+        for (const subChunk of subChunks) {
+          chunks.push({ content: subChunk.content, chunkIndex });
+          chunkIndex++;
+        }
+      } else {
+        chunks.push({ content: currentChunk.trim(), chunkIndex });
+      }
     }
 
     // Handle case where single text block exceeds chunk size
@@ -42,7 +56,23 @@ export class ChunkingService {
       return this.chunkBySize(text.trim());
     }
 
-    return chunks;
+    // Post-process: ensure no chunk exceeds size limit
+    const finalChunks: TextChunk[] = [];
+    let finalIndex = 0;
+    for (const chunk of chunks) {
+      if (chunk.content.length > this.chunkSize) {
+        const subChunks = this.chunkBySize(chunk.content);
+        for (const subChunk of subChunks) {
+          finalChunks.push({ content: subChunk.content, chunkIndex: finalIndex });
+          finalIndex++;
+        }
+      } else {
+        finalChunks.push({ content: chunk.content, chunkIndex: finalIndex });
+        finalIndex++;
+      }
+    }
+
+    return finalChunks;
   }
 
   private chunkBySize(text: string): TextChunk[] {
@@ -54,8 +84,8 @@ export class ChunkingService {
       const end = Math.min(start + this.chunkSize, text.length);
       chunks.push({ content: text.slice(start, end), chunkIndex });
       chunkIndex++;
+      if (end >= text.length) break;
       start = end - this.overlap;
-      if (start >= text.length) break;
     }
 
     return chunks;

@@ -7,7 +7,7 @@
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/index.js",
-    "ingest": "tsx src/scripts/ingest.ts"
+    "ingest": "tsx --max-old-space-size=8192 src/scripts/ingest.ts"
   },
   "dependencies": {
     "chromadb": "^1.9.2",
