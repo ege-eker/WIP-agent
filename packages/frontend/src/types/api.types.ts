@@ -32,5 +32,6 @@ export interface IngestionResult {
   processedFiles: number;
   skippedFiles: number;
   failedFiles: number;
+  cleanedFiles: number;
   errors: string[];
 }
