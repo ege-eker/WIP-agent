@@ -14,6 +14,13 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   return res.json();
 }
 
+export function openFolder(docPath: string): Promise<{ success: boolean; path: string }> {
+  return apiFetch('/documents/open-folder', {
+    method: 'POST',
+    body: JSON.stringify({ path: docPath }),
+  });
+}
+
 export function apiStreamFetch(path: string, body: unknown): Promise<Response> {
   return fetch(`${API_BASE}${path}`, {
     method: 'POST',

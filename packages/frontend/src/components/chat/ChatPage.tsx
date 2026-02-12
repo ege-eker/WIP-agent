@@ -66,7 +66,7 @@ export function ChatPage({ sessionId, onNeedSession, onUpdateTitle }: ChatPagePr
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <MessageList messages={messages} />
       <ChatInput onSend={handleSend} disabled={isLoading} />
     </div>

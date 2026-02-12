@@ -11,3 +11,25 @@ body {
 #root {
   height: 100vh;
 }
+
+/* Prose overflow düzeltmeleri */
+.prose pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.prose code {
+  word-break: break-word;
+}
+
+.prose table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+}

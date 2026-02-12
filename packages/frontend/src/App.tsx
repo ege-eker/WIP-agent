@@ -23,14 +23,14 @@ export default function App() {
   }, [create]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-h-0">
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
         onNewChat={handleNewChat}
         onSelectSession={handleSelectSession}
       />
-      <main className="flex-1 flex flex-col bg-gray-50">
+      <main className="flex-1 flex flex-col bg-gray-50 min-w-0 min-h-0">
         <ChatPage
           sessionId={activeSessionId}
           onNeedSession={handleNeedSession}

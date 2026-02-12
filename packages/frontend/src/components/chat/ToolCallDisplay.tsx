@@ -1,6 +1,7 @@
 import { Search, FolderOpen, FileText, Info, Filter, CheckCircle, Loader2, Eye } from 'lucide-react';
 import { ToolCallDisplay as ToolCallType } from '../../types/chat.types';
 import { useState } from 'react';
+import { linkifyPaths } from '../../utils/path-linkify';
 
 const TOOL_ICONS: Record<string, typeof Search> = {
   search_documents: Search,
@@ -24,6 +25,17 @@ const TOOL_LABELS: Record<string, string> = {
   get_file_info: 'Getting file info',
 };
 
+function linkifyJsonText(text: string) {
+  // Split by lines and linkify each line independently to preserve formatting
+  const lines = text.split('\n');
+  return lines.map((line, i) => (
+    <span key={i}>
+      {i > 0 && '\n'}
+      {linkifyPaths(line)}
+    </span>
+  ));
+}
+
 export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = TOOL_ICONS[toolCall.name] || Search;
@@ -37,11 +49,20 @@ export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
     parsedArgs = toolCall.arguments;
   }
 
+  let formattedResult: string | undefined;
+  if (toolCall.result) {
+    try {
+      formattedResult = JSON.stringify(JSON.parse(toolCall.result), null, 2);
+    } catch {
+      formattedResult = toolCall.result;
+    }
+  }
+
   return (
     <div className="my-2 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 transition-colors min-w-0"
       >
         {isRunning ? (
           <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -49,8 +70,8 @@ export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
           <CheckCircle className="w-4 h-4 text-green-500" />
         )}
         <Icon className="w-4 h-4" />
-        <div className="flex flex-col items-start">
-          <span className="font-medium">{label}</span>
+        <div className="flex flex-col items-start min-w-0 flex-1">
+          <span className="font-medium truncate">{label}</span>
           {isRunning && toolCall.progressMessage && (
             <span className="text-xs text-blue-600 animate-pulse">{toolCall.progressMessage}</span>
           )}
@@ -61,19 +82,13 @@ export function ToolCallDisplay({ toolCall }: { toolCall: ToolCallType }) {
         <div className="px-3 py-2 border-t border-gray-200 text-xs">
           <div className="mb-2">
             <span className="font-semibold text-gray-500">Arguments:</span>
-            <pre className="mt-1 p-2 bg-white rounded border overflow-x-auto">{parsedArgs}</pre>
+            <pre className="mt-1 p-2 bg-white rounded border overflow-x-auto whitespace-pre-wrap break-words">{parsedArgs}</pre>
           </div>
-          {toolCall.result && (
+          {formattedResult && (
             <div>
               <span className="font-semibold text-gray-500">Result:</span>
-              <pre className="mt-1 p-2 bg-white rounded border overflow-x-auto max-h-48 overflow-y-auto">
-                {(() => {
-                  try {
-                    return JSON.stringify(JSON.parse(toolCall.result), null, 2);
-                  } catch {
-                    return toolCall.result;
-                  }
-                })()}
+              <pre className="mt-1 p-2 bg-white rounded border overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap break-words">
+                {linkifyJsonText(formattedResult)}
               </pre>
             </div>
           )}
