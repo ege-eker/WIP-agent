@@ -10,6 +10,7 @@ import { filterDocuments } from './tools/filter-documents.tool';
 import { readDocumentChunk } from './tools/read-document-chunk.tool';
 import { getDocumentInfo } from './tools/get-document-info.tool';
 import { browseDirectory } from './tools/browse-directory.tool';
+import { browseTree } from './tools/browse-tree.tool';
 import { readFileContent } from './tools/read-file-content.tool';
 import { getFileInfo } from './tools/get-file-info.tool';
 
@@ -46,6 +47,9 @@ export class ToolExecutorService {
           break;
         case 'browse_directory':
           result = await browseDirectory(args, this.documentStore);
+          break;
+        case 'browse_tree':
+          result = await browseTree(args, this.documentStore);
           break;
         case 'read_file_content':
           result = await readFileContent(args, this.documentStore, onProgress);

@@ -10,6 +10,7 @@ import { FileDiscoveryService } from './file-discovery.service';
 import { MetadataExtractorService } from './metadata-extractor.service';
 import { ChunkingService } from './chunking.service';
 import { IngestionStateService } from './ingestion-state.service';
+import { StructureAnalyzerService } from './structure-analyzer.service';
 
 export interface IngestionProgress {
   jobId: string;
@@ -28,6 +29,7 @@ export class IngestionService {
   private chunking: ChunkingService;
   private parserFactory: ParserFactory;
   private ingestionState: IngestionStateService;
+  private structureAnalyzer: StructureAnalyzerService;
   private activeJobs = new Map<string, IngestionProgress>();
 
   constructor(
@@ -41,6 +43,7 @@ export class IngestionService {
     this.chunking = new ChunkingService();
     this.parserFactory = new ParserFactory();
     this.ingestionState = new IngestionStateService(documentStore.getBasePath());
+    this.structureAnalyzer = new StructureAnalyzerService();
   }
 
   private async cleanOrphanedDocuments(progress: IngestionProgress): Promise<void> {
@@ -96,6 +99,15 @@ export class IngestionService {
       progress.totalFiles = files.length;
       this.logger.info(`Discovered ${files.length} files for ingestion`);
 
+      // Analyze folder structure and persist profile
+      const profile = this.structureAnalyzer.analyze(files, this.documentStore.getBasePath());
+      await this.ingestionState.saveProfile(profile);
+      this.logger.info(`Folder structure profile: ${profile.pattern}`, {
+        categories: profile.categories.length,
+        years: profile.years.length,
+        maxDepth: profile.maxDepth,
+      });
+
       for (const file of files) {
         try {
           if (!this.ingestionState.needsReindex(file.path, file.sizeBytes, file.modifiedAt)) {
@@ -112,7 +124,7 @@ export class IngestionService {
           const buffer = await this.documentStore.readFile(file.path);
           const parsed = await parser.parse(buffer, file.filename);
 
-          const metadata = this.metadataExtractor.extract(file.path, this.documentStore.getBasePath());
+          const metadata = this.metadataExtractor.extract(file.path, this.documentStore.getBasePath(), profile);
           const textChunks = this.chunking.chunk(parsed.content);
 
           if (textChunks.length === 0) {
@@ -158,6 +170,21 @@ export class IngestionService {
         }
       }
 
+      // Retag ALL existing documents with the new profile (covers skipped files too)
+      if (progress.skippedFiles > 0) {
+        const chromaPaths = await this.vectorStore.getAllDocumentPaths();
+        let retagged = 0;
+        for (const docPath of chromaPaths) {
+          const meta = this.metadataExtractor.extract(docPath, this.documentStore.getBasePath(), profile);
+          const updated = await this.vectorStore.updateDocumentMetadata(docPath, {
+            year: meta.year || '',
+            category: meta.category || '',
+          });
+          if (updated > 0) retagged++;
+        }
+        this.logger.info(`Retagged ${retagged} existing documents with new profile`);
+      }
+
       await this.ingestionState.save();
       progress.status = 'completed';
       this.logger.info('Ingestion completed', {
@@ -177,6 +204,35 @@ export class IngestionService {
 
   getJobStatus(jobId: string): IngestionProgress | undefined {
     return this.activeJobs.get(jobId);
+  }
+
+  async retag(): Promise<{ retaggedFiles: number; retaggedChunks: number; profile: import('./structure-analyzer.service').FolderStructureProfile }> {
+    // 1. Discover files & analyze structure (no parsing, no embedding)
+    const files = await this.fileDiscovery.discoverFiles();
+    const basePath = this.documentStore.getBasePath();
+    const profile = this.structureAnalyzer.analyze(files, basePath);
+    await this.ingestionState.saveProfile(profile);
+    this.logger.info(`Retag: structure profile = ${profile.pattern}`);
+
+    // 2. For each file in ChromaDB, recalculate metadata and update in-place
+    const chromaPaths = await this.vectorStore.getAllDocumentPaths();
+    let retaggedFiles = 0;
+    let retaggedChunks = 0;
+
+    for (const docPath of chromaPaths) {
+      const meta = this.metadataExtractor.extract(docPath, basePath, profile);
+      const updated = await this.vectorStore.updateDocumentMetadata(docPath, {
+        year: meta.year || '',
+        category: meta.category || '',
+      });
+      if (updated > 0) {
+        retaggedFiles++;
+        retaggedChunks += updated;
+      }
+    }
+
+    this.logger.info(`Retag completed: ${retaggedFiles} files, ${retaggedChunks} chunks updated`);
+    return { retaggedFiles, retaggedChunks, profile };
   }
 
   async deleteDocument(documentPath: string): Promise<{ deleted: boolean; path: string }> {

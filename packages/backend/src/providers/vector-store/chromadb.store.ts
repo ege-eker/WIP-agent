@@ -265,4 +265,27 @@ export class ChromaDBStore implements IVectorStore {
     }
     return Array.from(paths);
   }
+
+  async updateDocumentMetadata(
+    documentPath: string,
+    metadata: { year?: string; category?: string }
+  ): Promise<number> {
+    const results = await this.collection.get({
+      where: { documentPath: { $eq: documentPath } } as any,
+    });
+    if (results.ids.length === 0) return 0;
+
+    const updatedMetadatas = results.metadatas.map((m: any) => ({
+      ...m,
+      ...(metadata.year !== undefined && { year: metadata.year }),
+      ...(metadata.category !== undefined && { category: metadata.category }),
+    }));
+
+    await this.collection.update({
+      ids: results.ids,
+      metadatas: updatedMetadatas,
+    });
+
+    return results.ids.length;
+  }
 }

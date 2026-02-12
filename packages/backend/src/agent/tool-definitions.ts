@@ -143,6 +143,26 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     type: 'function',
     function: {
+      name: 'browse_tree',
+      description: 'Get a recursive tree view of the folder structure. Use this to understand the full layout quickly.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Relative path (default: root)',
+          },
+          max_depth: {
+            type: 'number',
+            description: 'Max depth to traverse (default: 3, max: 5)',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'read_file_content',
       description: 'Read the full content of a file directly from disk. Use this when you know the exact file path and want to read its raw content (not chunked via vector store).',
       parameters: {

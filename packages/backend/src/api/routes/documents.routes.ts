@@ -59,6 +59,16 @@ export function documentsRoutes(
     res.json(status);
   });
 
+  router.post('/retag', async (_req, res, next) => {
+    try {
+      logger.info('Starting metadata retag (no re-embedding)');
+      const result = await ingestionService.retag();
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.delete('/', async (req, res, next) => {
     try {
       const documentPath = req.query.path as string;

@@ -53,3 +53,8 @@ export interface ReadFileContentInput {
 export interface GetFileInfoInput {
   file_path: string;
 }
+
+export interface BrowseTreeInput {
+  path?: string;
+  max_depth?: number;
+}

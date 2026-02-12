@@ -34,7 +34,7 @@ export async function createContainer() {
     contextThresholdPercent: env.contextThresholdPercent,
     maxHandoffs: env.maxHandoffs,
     model: env.openaiModel,
-  }, logger);
+  }, logger, env.documentsPath);
 
   const ingestionService = new IngestionService(documentStore, vectorStore, embeddingProvider, logger);
 

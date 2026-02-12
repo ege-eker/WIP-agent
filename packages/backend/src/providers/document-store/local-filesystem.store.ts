@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { IDocumentStore, FileInfo, DirectoryEntry } from '../../core/interfaces/document-store.interface';
+import { IDocumentStore, FileInfo, DirectoryEntry, TreeNode } from '../../core/interfaces/document-store.interface';
 import { sanitizePath } from '../../utils/path-sanitizer';
 
 export class LocalFilesystemStore implements IDocumentStore {
@@ -161,5 +161,79 @@ export class LocalFilesystemStore implements IDocumentStore {
       }
       return null;
     }
+  }
+
+  async listTree(relativePath: string, maxDepth: number): Promise<TreeNode> {
+    let fullPath = sanitizePath(relativePath || '', this.basePath);
+
+    // Unicode normalization fallback
+    try {
+      await fs.access(fullPath);
+    } catch {
+      const resolved = await this.resolveUnicodePath(fullPath);
+      if (resolved) {
+        fullPath = resolved;
+      }
+    }
+
+    return this.buildTree(fullPath, 0, maxDepth);
+  }
+
+  private async buildTree(dir: string, currentDepth: number, maxDepth: number): Promise<TreeNode> {
+    const name = currentDepth === 0 ? '/' : path.basename(dir);
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+
+    const dirs = entries.filter((e) => e.isDirectory());
+    const files = entries.filter((e) => e.isFile());
+
+    // At max depth, only report counts
+    if (currentDepth >= maxDepth) {
+      const totalFiles = await this.countFilesRecursive(dir);
+      return {
+        name,
+        type: 'directory',
+        fileCount: totalFiles,
+      };
+    }
+
+    const children: TreeNode[] = [];
+
+    // Add subdirectories recursively
+    for (const d of dirs.sort((a, b) => a.name.localeCompare(b.name))) {
+      const childPath = path.join(dir, d.name);
+      children.push(await this.buildTree(childPath, currentDepth + 1, maxDepth));
+    }
+
+    // Add files if this directory has <= 10 files, otherwise just count
+    if (files.length <= 10) {
+      for (const f of files.sort((a, b) => a.name.localeCompare(b.name))) {
+        const stat = await fs.stat(path.join(dir, f.name));
+        children.push({
+          name: f.name,
+          type: 'file',
+          sizeBytes: stat.size,
+        });
+      }
+    }
+
+    return {
+      name,
+      type: 'directory',
+      children,
+      fileCount: files.length,
+    };
+  }
+
+  private async countFilesRecursive(dir: string): Promise<number> {
+    let count = 0;
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        count += await this.countFilesRecursive(path.join(dir, entry.name));
+      } else if (entry.isFile()) {
+        count++;
+      }
+    }
+    return count;
   }
 }

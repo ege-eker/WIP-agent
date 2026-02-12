@@ -13,4 +13,5 @@ export interface IVectorStore {
   hasDocument(documentPath: string): Promise<boolean>;
   deleteDocument(documentPath: string): Promise<void>;
   getAllDocumentPaths(): Promise<string[]>;
+  updateDocumentMetadata(documentPath: string, metadata: { year?: string; category?: string }): Promise<number>;
 }

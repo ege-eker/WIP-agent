@@ -12,6 +12,14 @@ export interface DirectoryEntry {
   modifiedAt?: Date;
 }
 
+export interface TreeNode {
+  name: string;
+  type: 'file' | 'directory';
+  children?: TreeNode[];
+  fileCount?: number;
+  sizeBytes?: number;
+}
+
 export interface IDocumentStore {
   listFiles(extensions: string[]): Promise<FileInfo[]>;
   readFile(filePath: string): Promise<Buffer>;
@@ -19,4 +27,5 @@ export interface IDocumentStore {
   getBasePath(): string;
   listDirectory(relativePath: string): Promise<DirectoryEntry[]>;
   getFileStats(relativePath: string): Promise<FileInfo | null>;
+  listTree(relativePath: string, maxDepth: number): Promise<TreeNode>;
 }

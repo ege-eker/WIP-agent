@@ -8,13 +8,17 @@ import { ToolExecutorService } from './tool-executor.service';
 import { TOOL_DEFINITIONS } from './tool-definitions';
 import { ContextOverflowError, MaxToolCallsError } from '../core/errors/ai.errors';
 import { ProgressChannel } from '../utils/progress-channel';
+import { IngestionStateService } from '../ingestion/ingestion-state.service';
+import { FolderStructureProfile } from '../ingestion/structure-analyzer.service';
 
-const SYSTEM_PROMPT = `You are an intelligent document search assistant. You have access to a collection of documents (PDF, DOCX, TXT files) that you can search through using the provided tools.
+function buildSystemPrompt(profile?: FolderStructureProfile | null): string {
+  const base = `You are an intelligent document search assistant. You have access to a collection of documents (PDF, DOCX, TXT files) that you can search through using the provided tools.
 
 You have two categories of tools:
 
 **Filesystem Tools** (browse the actual folder structure):
 - browse_directory: List files and subdirectories at a given path. Use for structural queries like "what folders exist?" or "show me the Engineering/2023 folder".
+- browse_tree: Get a recursive tree view of the folder structure. Use this first to understand the full layout quickly.
 - read_file_content: Read the raw content of a file directly from disk.
 - get_file_info: Get file metadata (size, modification date).
 
@@ -26,7 +30,8 @@ You have two categories of tools:
 - get_document_info: Get detailed metadata about a document from the vector store.
 
 **Strategy:**
-- For structural queries (e.g. "what's in the Engineering folder?", "show me 2023 documents", "list all folders"): Start with browse_directory, then drill down as needed.
+- When you first encounter a query, use browse_tree to understand the folder layout.
+- For structural queries (e.g. "what's in the Engineering folder?", "show me 2023 documents", "list all folders"): Use browse_directory or browse_tree, then drill down as needed.
 - For content queries (e.g. "what does the API guidelines document say about authentication?"): Start with search_documents, then read content for details.
 - If one approach doesn't yield results, fall back to the other. For example, if browse_directory shows the folder structure but you need content, use search_documents or read_file_content next.
 
@@ -34,18 +39,33 @@ Always cite the document name and path when providing information. Be thorough -
 
 If you cannot find relevant information after thorough searching, say so clearly.`;
 
+  if (profile) {
+    return base + `\n\n**Document Collection Info:**\n${profile.summary}\nAvailable categories: ${profile.categories.join(', ') || 'none detected'}\nAvailable years: ${profile.years.join(', ') || 'none detected'}`;
+  }
+  return base;
+}
+
 export class AgentService implements IAgent {
+  private ingestionState: IngestionStateService;
+
   constructor(
     private aiProvider: IAIProvider,
     private contextManager: ContextManagerService,
     private toolExecutor: ToolExecutorService,
     private config: AgentConfig,
-    private logger: ILogger
-  ) {}
+    private logger: ILogger,
+    documentBasePath: string
+  ) {
+    this.ingestionState = new IngestionStateService(documentBasePath);
+  }
 
   async *run(sessionId: string, userMessage: string, existingMessages: ChatMessage[] = []): AsyncGenerator<SSEEvent> {
+    // Load structure profile for dynamic prompt
+    const profile = await this.ingestionState.loadProfile();
+    const systemPrompt = buildSystemPrompt(profile);
+
     let messages: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...existingMessages,
       { role: 'user', content: userMessage },
     ];
@@ -69,7 +89,7 @@ export class AgentService implements IAgent {
         const handoffMessages = this.contextManager.buildHandoffMessages(summary, userMessage);
 
         messages = [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           ...handoffMessages,
         ];
         handoffCount++;

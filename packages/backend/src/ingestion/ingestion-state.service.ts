@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { FolderStructureProfile } from './structure-analyzer.service';
 
 interface FileState {
   path: string;
@@ -15,11 +16,13 @@ interface IngestionState {
 export class IngestionStateService {
   private state: IngestionState = { files: {} };
   private statePath: string;
+  private profilePath: string;
 
   constructor(basePath: string) {
     // Store state outside the documents folder so clearing documents doesn't erase it
     const dataDir = path.join(path.dirname(basePath), 'data');
     this.statePath = path.join(dataDir, 'ingestion-state.json');
+    this.profilePath = path.join(dataDir, 'structure-profile.json');
   }
 
   async load(): Promise<void> {
@@ -60,5 +63,19 @@ export class IngestionStateService {
 
   removePath(filePath: string): void {
     delete this.state.files[filePath];
+  }
+
+  async saveProfile(profile: FolderStructureProfile): Promise<void> {
+    await fs.mkdir(path.dirname(this.profilePath), { recursive: true });
+    await fs.writeFile(this.profilePath, JSON.stringify(profile, null, 2));
+  }
+
+  async loadProfile(): Promise<FolderStructureProfile | null> {
+    try {
+      const data = await fs.readFile(this.profilePath, 'utf-8');
+      return JSON.parse(data) as FolderStructureProfile;
+    } catch {
+      return null;
+    }
   }
 }
