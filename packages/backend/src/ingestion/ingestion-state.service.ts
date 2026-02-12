@@ -17,7 +17,9 @@ export class IngestionStateService {
   private statePath: string;
 
   constructor(basePath: string) {
-    this.statePath = path.join(basePath, 'ingestion-state.json');
+    // Store state outside the documents folder so clearing documents doesn't erase it
+    const dataDir = path.join(path.dirname(basePath), 'data');
+    this.statePath = path.join(dataDir, 'ingestion-state.json');
   }
 
   async load(): Promise<void> {
@@ -30,6 +32,7 @@ export class IngestionStateService {
   }
 
   async save(): Promise<void> {
+    await fs.mkdir(path.dirname(this.statePath), { recursive: true });
     await fs.writeFile(this.statePath, JSON.stringify(this.state, null, 2));
   }
 

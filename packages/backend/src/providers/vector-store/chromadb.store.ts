@@ -255,4 +255,14 @@ export class ChromaDBStore implements IVectorStore {
       await this.collection.delete({ ids: results.ids });
     }
   }
+
+  async getAllDocumentPaths(): Promise<string[]> {
+    const allDocs = await this.collection.get();
+    const paths = new Set<string>();
+    for (const meta of allDocs.metadatas || []) {
+      const docPath = (meta as any)?.documentPath;
+      if (docPath) paths.add(docPath);
+    }
+    return Array.from(paths);
+  }
 }

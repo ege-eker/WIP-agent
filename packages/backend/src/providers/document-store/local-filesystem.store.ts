@@ -84,7 +84,8 @@ export class LocalFilesystemStore implements IDocumentStore {
       await fs.access(filePath);
       return true;
     } catch {
-      return false;
+      const resolved = await this.resolveUnicodePath(filePath);
+      return resolved !== null;
     }
   }
 

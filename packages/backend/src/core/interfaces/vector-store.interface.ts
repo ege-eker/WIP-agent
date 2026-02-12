@@ -12,4 +12,5 @@ export interface IVectorStore {
   getStats(): Promise<{ totalDocuments: number; totalChunks: number }>;
   hasDocument(documentPath: string): Promise<boolean>;
   deleteDocument(documentPath: string): Promise<void>;
+  getAllDocumentPaths(): Promise<string[]>;
 }

@@ -8,6 +8,7 @@ dist/
 *.tsbuildinfo
 chromadb_data/
 ingestion-state.json
+data/
 .claude/
 documents/
 *.traineddata

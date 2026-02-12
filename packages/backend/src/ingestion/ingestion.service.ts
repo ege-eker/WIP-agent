@@ -18,6 +18,7 @@ export interface IngestionProgress {
   processedFiles: number;
   skippedFiles: number;
   failedFiles: number;
+  cleanedFiles: number;
   errors: string[];
 }
 
@@ -42,6 +43,35 @@ export class IngestionService {
     this.ingestionState = new IngestionStateService(documentStore.getBasePath());
   }
 
+  private async cleanOrphanedDocuments(progress: IngestionProgress): Promise<void> {
+    // Use ChromaDB as the source of truth — ingestion state may be missing
+    const chromaPaths = await this.vectorStore.getAllDocumentPaths();
+    const statePaths = this.ingestionState.getIndexedPaths();
+    const allPaths = new Set([...chromaPaths, ...statePaths]);
+
+    this.logger.info(`Checking ${allPaths.size} indexed paths for orphaned documents`);
+
+    for (const filePath of allPaths) {
+      try {
+        const fileExists = await this.documentStore.exists(filePath);
+        if (!fileExists) {
+          this.logger.info(`Orphaned document detected, cleaning up: ${filePath}`);
+          await this.vectorStore.deleteDocument(filePath);
+          this.ingestionState.removePath(filePath);
+          progress.cleanedFiles++;
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        progress.errors.push(`Cleanup failed for ${filePath}: ${errMsg}`);
+        this.logger.error(`Failed to clean orphaned document: ${filePath}`, { error: errMsg });
+      }
+    }
+
+    if (progress.cleanedFiles > 0) {
+      this.logger.info(`Cleaned ${progress.cleanedFiles} orphaned documents`);
+    }
+  }
+
   async ingest(): Promise<IngestionProgress> {
     const jobId = uuidv4();
     const progress: IngestionProgress = {
@@ -51,12 +81,17 @@ export class IngestionService {
       processedFiles: 0,
       skippedFiles: 0,
       failedFiles: 0,
+      cleanedFiles: 0,
       errors: [],
     };
     this.activeJobs.set(jobId, progress);
 
     try {
       await this.ingestionState.load();
+
+      // Clean up chunks for files that no longer exist on disk
+      await this.cleanOrphanedDocuments(progress);
+
       const files = await this.fileDiscovery.discoverFiles();
       progress.totalFiles = files.length;
       this.logger.info(`Discovered ${files.length} files for ingestion`);
@@ -129,6 +164,7 @@ export class IngestionService {
         processed: progress.processedFiles,
         skipped: progress.skippedFiles,
         failed: progress.failedFiles,
+        cleaned: progress.cleanedFiles,
       });
     } catch (err) {
       progress.status = 'failed';
@@ -141,5 +177,14 @@ export class IngestionService {
 
   getJobStatus(jobId: string): IngestionProgress | undefined {
     return this.activeJobs.get(jobId);
+  }
+
+  async deleteDocument(documentPath: string): Promise<{ deleted: boolean; path: string }> {
+    await this.ingestionState.load();
+    await this.vectorStore.deleteDocument(documentPath);
+    this.ingestionState.removePath(documentPath);
+    await this.ingestionState.save();
+    this.logger.info(`Manually deleted document: ${documentPath}`);
+    return { deleted: true, path: documentPath };
   }
 }
