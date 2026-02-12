@@ -11,6 +11,6 @@ export function createErrorHandler(logger: ILogger) {
     }
 
     logger.error('Unhandled error', { error: err.message, stack: err.stack });
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: err.message, stack: err.stack });
   };
 }

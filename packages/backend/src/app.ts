@@ -1,8 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
 import { env } from './env';
-import { generalRateLimiter } from './api/middleware/rate-limiter.middleware';
 import { createErrorHandler } from './api/middleware/error-handler.middleware';
 import { healthRoutes } from './api/routes/health.routes';
 import { chatRoutes } from './api/routes/chat.routes';
@@ -22,10 +20,8 @@ export function createApp(deps: {
 }) {
   const app = express();
 
-  app.use(helmet());
   app.use(cors({ origin: env.frontendUrl, credentials: true }));
   app.use(express.json({ limit: '1mb' }));
-  app.use(generalRateLimiter);
 
   app.use('/api/health', healthRoutes());
   app.use('/api/chat', chatRoutes(deps.agentService, deps.sessionService, deps.logger));

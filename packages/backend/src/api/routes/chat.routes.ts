@@ -4,7 +4,6 @@ import { SessionService } from '../../session/session.service';
 import { ILogger } from '../../core/interfaces/logger.interface';
 import { validate } from '../middleware/validate.middleware';
 import { chatRequestSchema, createSessionSchema } from '../validators/chat.validators';
-import { chatRateLimiter } from '../middleware/rate-limiter.middleware';
 import { inputSanitizer } from '../middleware/input-sanitizer.middleware';
 
 export function chatRoutes(
@@ -37,7 +36,7 @@ export function chatRoutes(
   });
 
   // Chat via SSE
-  router.post('/', chatRateLimiter, inputSanitizer, validate(chatRequestSchema), async (req: Request, res: Response) => {
+  router.post('/', inputSanitizer, validate(chatRequestSchema), async (req: Request, res: Response) => {
     const { sessionId, message } = req.body;
 
     const session = sessionService.get(sessionId);
