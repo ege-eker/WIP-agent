@@ -24,8 +24,8 @@ const C = '[\\p{L}\\p{N}\\p{M}\\-_()]';
 const DIR_SEG = `(?:${C}|\\.)+(?:\\s+(?:${C}|\\.)+)*`;
 // Strict dir segment: NO spaces (used as first segment of bare relative paths to prevent bleeding)
 const DIR_SEG_STRICT = `(?:${C}|\\.)+`;
-// Filename segment: no dots (so extension is unambiguous), spaces allowed between runs
-const FILE_SEG = `${C}+(?:\\s+${C}+)*`;
+// Filename segment: dots allowed, spaces allowed between char-groups
+const FILE_SEG = `(?:${C}|\\.)+(?:\\s+(?:${C}|\\.)+)*`;
 
 const PATH_REGEX = new RegExp(
   `(?:` +
