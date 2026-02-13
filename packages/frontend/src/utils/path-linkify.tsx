@@ -12,22 +12,30 @@ import { openFolder } from '../services/api.service';
  *
  * Key design: spaces are NOT in the base char class (prevents bleeding into surrounding text).
  * Instead, spaces are allowed only BETWEEN char-groups within a segment: CHAR+(\s+CHAR+)*
+ * For bare relative paths (no drive letter, no ./ prefix), the FIRST directory segment
+ * does NOT allow spaces — this prevents "random words DirName/file.ext" bleeding.
  * File extension is mandatory so the match ends cleanly at .ext boundary.
  */
 
 // Base chars: any letter, digit, combining mark, hyphen, underscore, parentheses (NO dot, NO space)
 // Uses Unicode property escapes (\p{L}, \p{N}, \p{M}) to handle ALL Unicode scripts and NFC/NFD forms
 const C = '[\\p{L}\\p{N}\\p{M}\\-_()]';
-// Directory segment: C + dots allowed, NO spaces (prevents capturing surrounding text as dirs)
-const DIR_SEG = `(?:${C}|\\.)+`;
+// Directory segment: C + dots allowed, spaces allowed between char-groups (e.g. "ARAÇ TAKİBİ")
+const DIR_SEG = `(?:${C}|\\.)+(?:\\s+(?:${C}|\\.)+)*`;
+// Strict dir segment: NO spaces (used as first segment of bare relative paths to prevent bleeding)
+const DIR_SEG_STRICT = `(?:${C}|\\.)+`;
 // Filename segment: no dots (so extension is unambiguous), spaces allowed between runs
 const FILE_SEG = `${C}+(?:\\s+${C}+)*`;
 
 const PATH_REGEX = new RegExp(
-  `(?:[A-Za-z]:[\\\\/])?` +        // optional drive letter (C:\ or C:/)
-  `(?:\\.{0,2}[\\\\/])?` +         // optional ./ or ../
-  `(?:${DIR_SEG}[\\\\/])+` +       // one or more directory segments
-  `${FILE_SEG}\\.\\w{1,10}`,       // filename.ext (extension required)
+  `(?:` +
+    `[A-Za-z]:[\\\\/](?:${DIR_SEG}[\\\\/])*` +            // absolute: drive letter anchors, spaces OK everywhere
+  `|` +
+    `\\.{0,2}[\\\\/](?:${DIR_SEG}[\\\\/])*` +             // ./ or ../ anchors, spaces OK everywhere
+  `|` +
+    `${DIR_SEG_STRICT}[\\\\/](?:${DIR_SEG}[\\\\/])*` +    // bare relative: first seg strict (no spaces), rest OK
+  `)` +
+  `${FILE_SEG}\\.\\w{1,10}`,                              // filename.ext (extension required)
   'gu'
 );
 
