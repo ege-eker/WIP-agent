@@ -5,7 +5,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'search_documents',
-      description: 'Perform semantic vector search across the document collection. Returns documents ranked by similarity to the query.',
+      description: 'Perform semantic vector search across the document collection. Returns documents ranked by similarity score (0-1). Each result includes the matching chunkIndex — use this index when calling read_document_chunk. Scores above 0.5 are strong matches. Scores 0.3-0.5 are moderate — always follow up by reading the matched chunk content with read_document_chunk using the returned chunkIndex. Below 0.3 — rephrase and search again. This is the best tool for finding document content by topic or meaning. Prefer this over browsing when the user asks about document contents.',
       parameters: {
         type: 'object',
         properties: {
@@ -85,7 +85,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'read_document_chunk',
-      description: 'Read the full content of a specific chunk from a document. Use this to examine document content in detail.',
+      description: 'Read the full content of a specific chunk from a document. Use the chunkIndex from search_documents results to read the matched chunk. Use read_adjacent parameter to navigate to neighboring chunks if the content seems incomplete or you need more context.',
       parameters: {
         type: 'object',
         properties: {
