@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useChat } from '../../hooks/useChat';
 import { getSession } from '../../services/chat.service';
 import { MessageList } from './MessageList';
@@ -65,8 +65,27 @@ export function ChatPage({ sessionId, onNeedSession, onUpdateTitle }: ChatPagePr
     send(sid, text);
   };
 
+  const [logoVisible, setLogoVisible] = useState(true);
+
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 relative">
+      {logoVisible ? (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+          <img
+            src="/logo.png"
+            alt=""
+            className="w-96 object-contain opacity-[0.045]"
+            onError={() => setLogoVisible(false)}
+          />
+        </div>
+      ) : messages.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 text-gray-400">
+          <div className="text-center">
+            <p className="text-lg font-medium">Ask a question about your documents</p>
+            <p className="text-sm mt-1">The AI will search through your document collection to find answers.</p>
+          </div>
+        </div>
+      )}
       <MessageList messages={messages} />
       <ChatInput onSend={handleSend} disabled={isLoading} />
     </div>

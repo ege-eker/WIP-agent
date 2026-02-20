@@ -10,14 +10,7 @@ export function MessageList({ messages }: { messages: DisplayMessage[] }) {
   }, [messages]);
 
   if (messages.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-400">
-        <div className="text-center">
-          <p className="text-lg font-medium">Ask a question about your documents</p>
-          <p className="text-sm mt-1">The AI will search through your document collection to find answers.</p>
-        </div>
-      </div>
-    );
+    return <div className="flex-1" />;
   }
 
   return (
