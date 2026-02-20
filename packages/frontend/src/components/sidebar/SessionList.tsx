@@ -10,7 +10,7 @@ interface SessionListProps {
 export function SessionList({ sessions, activeId, onSelect }: SessionListProps) {
   if (sessions.length === 0) {
     return (
-      <div className="px-4 py-6 text-center text-xs text-gray-400">
+      <div className="flex-1 px-4 py-6 text-center text-xs text-gray-400">
         No conversations yet
       </div>
     );
